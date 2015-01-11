@@ -28,6 +28,23 @@ var (
   woo complex128 = cmplx.Sqrt(-5 + 12i)
 )
 
+// Fields
+type MyClass struct {
+  i int
+}
+
+// Method
+func (h MyClass) GetI() int {
+  return h.i
+}
+
+// Constructor
+func NewMyClass() *MyClass {
+  ret := new(MyClass)
+  ret.i = 10
+  return ret
+}
+
 func foo(x string) (ret string) {
   //ret = x + "Fish" + string(time.Now()) + "!"
   defer fmt.Println("two")
@@ -38,6 +55,11 @@ func foo(x string) (ret string) {
 }
 
 func main() {
+  var d MyClass
+  fmt.Println(d.GetI())
+  var p = NewMyClass();
+  fmt.Println(p.GetI())
+
   var x, y, z = "Foo", false, -10
   var jjj int
   var tmp string
