@@ -24,7 +24,7 @@ func sendClose(messages chan<- Message) {
   messages <- Message{msgType:MESSAGE_TYPE_END}
 }
 
-func getUrlAsString(url string, depth int, maxDepth int, messages chan<- Message) {
+func processUrl(url string, depth int, maxDepth int, messages chan<- Message) {
   var resp *http.Response
 
   // Send close message once this function exits
@@ -93,7 +93,7 @@ func followLinks(input string, depth int, maxDepth int, messages chan<- Message)
   if (matches != nil) {
     for i := 0; i < len(matches); i++ {
       messages <- Message{msgType:MESSAGE_TYPE_START}
-      go getUrlAsString(matches[i], depth, maxDepth, messages)
+      go processUrl(matches[i], depth, maxDepth, messages)
     }
   }
 
@@ -111,7 +111,7 @@ func main() {
 
   for i := 1; i < len(os.Args); i++ {
     messages <- Message{msgType:MESSAGE_TYPE_START}
-    go getUrlAsString(os.Args[i], 0, 1, messages)
+    go processUrl(os.Args[i], 0, 1, messages)
   }
   for running {
     msg := <-messages
