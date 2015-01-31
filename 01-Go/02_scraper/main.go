@@ -5,9 +5,10 @@ import (
   "net/http"
   "io/ioutil"
   "regexp"
+  "html"
 )
 
-const debug = true
+const debug = false
 
 func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string) {
   var resp *http.Response
@@ -30,10 +31,16 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string)
 
   if debug { fmt.Println("Read", len(body), "bytes from", url) }
 
-  urls := parseString(string(body))
-  //fmt.Println("urls", urls)
+  bodyStr := string(body)
+  // Process payload
+  payload := findPayload(bodyStr)
+  for i := 0; i < len(payload); i++ {
+    messages <- payload[i]
+  }
+
+  urls := parseString(bodyStr)
   if (depth < maxDepth) {
-    for i:= 0; i < len(urls); i++ {
+    for i := 0; i < len(urls); i++ {
       messages <- "+open"
       go getUrlAsString(urls[i], depth+1, maxDepth, messages)
     }
@@ -41,6 +48,24 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string)
   messages <- "-close"
   return
 
+}
+
+func findPayload(input string) []string {
+  parseStringRegexp := regexp.MustCompile("<img\\s([^<>]+\\s)?src=[\"']([^\"'<>\\s]+)")
+  tmp := parseStringRegexp.FindAllStringSubmatch(input, -1)
+  matches := []string{}
+  if (tmp != nil) {
+    for i :=0; i < len(tmp); i++ {
+      img := tmp[i][2]
+      img = html.UnescapeString(img)
+      matches = append(matches, img)
+    }
+  } else {
+    if debug { fmt.Println("no payload matches") }
+  }
+
+
+  return matches
 }
 
 func parseString(input string) []string {
@@ -71,6 +96,8 @@ func main() {
         if debug { fmt.Println("done") }
         break
       }
+    } else {
+      fmt.Println(msg)
     }
   }
 
