@@ -106,12 +106,13 @@ func main() {
 
   messages := make(chan Message, len(os.Args)-1)
   counter := 0
+  running := true
 
   for i := 1; i < len(os.Args); i++ {
     messages <- Message{msgType:MESSAGE_TYPE_START}
     go getUrlAsString(os.Args[i], 0, 1, messages)
   }
-  for true {
+  for running {
     msg := <-messages
     switch {
     case msg.msgType == MESSAGE_TYPE_START:
@@ -123,11 +124,12 @@ func main() {
       counter--;
       if (counter == 0) {
         if debug { fmt.Println("done") }
-        return
+        running = false
       }
       break
     case msg.msgType == MESSAGE_TYPE_PAYLOAD:
       fmt.Println(msg.payload)
+      break
     }
   }
 }
