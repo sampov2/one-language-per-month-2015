@@ -61,15 +61,14 @@ func main() {
   go getUrlAsString("http://spatineo.com", 0, 1, messages)
   for true {
     msg := <-messages
-    fmt.Println("message", msg)
     if (msg == "+open") {
-      fmt.Println("open!")
+      if debug { fmt.Println("open!") }
       counter++;
     } else if (msg == "-close") {
-      fmt.Println("close..")
+      if debug { fmt.Println("close..") }
       counter--;
       if (counter == 0) {
-        fmt.Println("done")
+        if debug { fmt.Println("done") }
         break
       }
     }
