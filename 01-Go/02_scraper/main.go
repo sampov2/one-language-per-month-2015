@@ -9,7 +9,7 @@ import (
 
 const debug = true
 
-func getUrlAsString(url string, depth int, maxDepth int, messages chan string) {
+func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string) {
   var resp *http.Response
 
 
