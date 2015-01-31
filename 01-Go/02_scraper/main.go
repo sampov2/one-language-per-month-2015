@@ -11,15 +11,23 @@ import (
 )
 
 const debug = false
+const MESSAGE_TYPE_START = 0
+const MESSAGE_TYPE_END = 1
+const MESSAGE_TYPE_PAYLOAD = 2
 
-func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string) {
+type Message struct {
+  msgType int
+  payload string
+}
+
+func getUrlAsString(url string, depth int, maxDepth int, messages chan<- Message) {
   var resp *http.Response
 
 
   if debug { fmt.Println("Retrieving", url)}
   resp, err := http.Get(url)
   if err != nil {
-    messages <- "-close"
+    messages <- Message{msgType:MESSAGE_TYPE_END}
     return
   }
 
@@ -27,7 +35,7 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string)
   if debug { fmt.Println("Reading response", url)}
   body, err := ioutil.ReadAll(resp.Body)
   if err != nil {
-    messages <- "-close"
+    messages <- Message{msgType:MESSAGE_TYPE_END}
     return
   }
 
@@ -40,12 +48,12 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string)
   if (depth < maxDepth) {
     followLinks(bodyStr, depth+1, maxDepth, messages)
   }
-  messages <- "-close"
+  messages <- Message{msgType:MESSAGE_TYPE_END}
   return
 
 }
 
-func findPayload(input string, baseUrl string, messages chan<- string) {
+func findPayload(input string, baseUrl string, messages chan<- Message) {
   parseStringRegexp := regexp.MustCompile("(?i)<img\\s([^<>]+\\s)?src=[\"']([^\"'<>\\s]+)")
   protocolRegexp := regexp.MustCompile("(?i)^([a-zA-Z]+:)(//[^/]*/?)(.*)([^/]*)$")
 
@@ -71,19 +79,19 @@ func findPayload(input string, baseUrl string, messages chan<- string) {
           img = protoMatch[1] + protoMatch[2] + protoMatch[3] + img
         }
       }
-      messages <- img
+      messages <- Message{msgType:MESSAGE_TYPE_PAYLOAD, payload:img}
     }
   } else {
     if debug { fmt.Println("no payload matches") }
   }
 }
 
-func followLinks(input string, depth int, maxDepth int, messages chan<- string) {
+func followLinks(input string, depth int, maxDepth int, messages chan<- Message) {
   parseStringRegexp := regexp.MustCompile("https?://[^\"\\s]+")
   matches := parseStringRegexp.FindAllString(input, -1)
   if (matches != nil) {
     for i := 0; i < len(matches); i++ {
-      messages <- "+open"
+      messages <- Message{msgType:MESSAGE_TYPE_START}
       go getUrlAsString(matches[i], depth, maxDepth, messages)
     }
   }
@@ -91,33 +99,35 @@ func followLinks(input string, depth int, maxDepth int, messages chan<- string) 
 }
 
 func main() {
-  fmt.Println(os.Args)
   if len(os.Args) < 2 {
     fmt.Println("usage: scrape url1 [url2 url3 ..]")
     return
   }
 
-  messages := make(chan string, len(os.Args)-1)
+  messages := make(chan Message, len(os.Args)-1)
   counter := 0
 
   for i := 1; i < len(os.Args); i++ {
-    messages <- "+open"
+    messages <- Message{msgType:MESSAGE_TYPE_START}
     go getUrlAsString(os.Args[i], 0, 1, messages)
   }
   for true {
     msg := <-messages
-    if (msg == "+open") {
+    switch {
+    case msg.msgType == MESSAGE_TYPE_START:
       if debug { fmt.Println("open!") }
       counter++;
-    } else if (msg == "-close") {
+      break;
+    case msg.msgType == MESSAGE_TYPE_END:
       if debug { fmt.Println("close..") }
       counter--;
       if (counter == 0) {
         if debug { fmt.Println("done") }
-        break
+        return
       }
-    } else {
-      fmt.Println(msg)
+      break
+    case msg.msgType == MESSAGE_TYPE_PAYLOAD:
+      fmt.Println(msg.payload)
     }
   }
 }
