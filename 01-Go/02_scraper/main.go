@@ -37,11 +37,7 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string)
   findPayload(bodyStr, url, messages)
 
   if (depth < maxDepth) {
-    urls := parseString(bodyStr)
-    for i := 0; i < len(urls); i++ {
-      messages <- "+open"
-      go getUrlAsString(urls[i], depth+1, maxDepth, messages)
-    }
+    followLinks(bodyStr, depth+1, maxDepth, messages)
   }
   messages <- "-close"
   return
@@ -81,14 +77,16 @@ func findPayload(input string, baseUrl string, messages chan<- string) {
   }
 }
 
-func parseString(input string) []string {
+func followLinks(input string, depth int, maxDepth int, messages chan<- string) {
   parseStringRegexp := regexp.MustCompile("https?://[^\"\\s]+")
   matches := parseStringRegexp.FindAllString(input, -1)
-  if (matches == nil) {
-    matches = []string{}
+  if (matches != nil) {
+    for i := 0; i < len(matches); i++ {
+      messages <- "+open"
+      go getUrlAsString(matches[i], depth, maxDepth, messages)
+    }
   }
 
-  return matches
 }
 
 func main() {
