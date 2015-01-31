@@ -6,6 +6,7 @@ import (
   "io/ioutil"
   "regexp"
   "html"
+  "strings"
 )
 
 const debug = false
@@ -33,13 +34,10 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string)
 
   bodyStr := string(body)
   // Process payload
-  payload := findPayload(bodyStr)
-  for i := 0; i < len(payload); i++ {
-    messages <- payload[i]
-  }
+  findPayload(bodyStr, url, messages)
 
-  urls := parseString(bodyStr)
   if (depth < maxDepth) {
+    urls := parseString(bodyStr)
     for i := 0; i < len(urls); i++ {
       messages <- "+open"
       go getUrlAsString(urls[i], depth+1, maxDepth, messages)
@@ -50,22 +48,37 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- string)
 
 }
 
-func findPayload(input string) []string {
-  parseStringRegexp := regexp.MustCompile("<img\\s([^<>]+\\s)?src=[\"']([^\"'<>\\s]+)")
+func findPayload(input string, baseUrl string, messages chan<- string) {
+  parseStringRegexp := regexp.MustCompile("(?i)<img\\s([^<>]+\\s)?src=[\"']([^\"'<>\\s]+)")
+  protocolRegexp := regexp.MustCompile("(?i)^([a-zA-Z]+:)(//[^/]*/?)(.*)([^/]*)$")
+
+  protoMatch := protocolRegexp.FindStringSubmatch(baseUrl);
+
   tmp := parseStringRegexp.FindAllStringSubmatch(input, -1)
-  matches := []string{}
   if (tmp != nil) {
     for i :=0; i < len(tmp); i++ {
       img := tmp[i][2]
       img = html.UnescapeString(img)
-      matches = append(matches, img)
+
+      // Really crude
+      if strings.Index(img, "://") == -1 {
+        // No protocol => relative url
+        if strings.Index(img, "//") == 0 {
+          // absolute url sans protocol
+          img = protoMatch[1] + img;
+        } else if (img[0] == '/') {
+          // Absolute wrt baseUrl
+          img = protoMatch[1] + protoMatch[2] + img
+        } else {
+          // Just append away
+          img = protoMatch[1] + protoMatch[2] + protoMatch[3] + img
+        }
+      }
+      messages <- img
     }
   } else {
     if debug { fmt.Println("no payload matches") }
   }
-
-
-  return matches
 }
 
 func parseString(input string) []string {
