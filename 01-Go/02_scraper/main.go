@@ -1,6 +1,7 @@
 package main
 
 import (
+  "os"
   "fmt"
   "net/http"
   "io/ioutil"
@@ -90,11 +91,19 @@ func followLinks(input string, depth int, maxDepth int, messages chan<- string) 
 }
 
 func main() {
-  messages := make(chan string, 1)
+  fmt.Println(os.Args)
+  if len(os.Args) < 2 {
+    fmt.Println("usage: scrape url1 [url2 url3 ..]")
+    return
+  }
+
+  messages := make(chan string, len(os.Args)-1)
   counter := 0
 
-  messages <- "+open"
-  go getUrlAsString("http://spatineo.com", 0, 1, messages)
+  for i := 1; i < len(os.Args); i++ {
+    messages <- "+open"
+    go getUrlAsString(os.Args[i], 0, 1, messages)
+  }
   for true {
     msg := <-messages
     if (msg == "+open") {
@@ -111,5 +120,4 @@ func main() {
       fmt.Println(msg)
     }
   }
-
 }
