@@ -20,15 +20,11 @@ type Message struct {
   payload string
 }
 
-func sendClose(messages chan<- Message) {
-  messages <- Message{msgType:MESSAGE_TYPE_END}
-}
-
 func processUrl(url string, depth int, maxDepth int, messages chan<- Message) {
   var resp *http.Response
 
   // Send close message once this function exits
-  defer sendClose(messages)
+  defer func() { messages <- Message{msgType:MESSAGE_TYPE_END} }()
 
   if debug { fmt.Println("Retrieving", url)}
   resp, err := http.Get(url)
