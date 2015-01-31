@@ -20,14 +20,19 @@ type Message struct {
   payload string
 }
 
+func sendClose(messages chan<- Message) {
+  messages <- Message{msgType:MESSAGE_TYPE_END}
+}
+
 func getUrlAsString(url string, depth int, maxDepth int, messages chan<- Message) {
   var resp *http.Response
 
+  // Send close message once this function exits
+  defer sendClose(messages)
 
   if debug { fmt.Println("Retrieving", url)}
   resp, err := http.Get(url)
   if err != nil {
-    messages <- Message{msgType:MESSAGE_TYPE_END}
     return
   }
 
@@ -35,7 +40,6 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- Message
   if debug { fmt.Println("Reading response", url)}
   body, err := ioutil.ReadAll(resp.Body)
   if err != nil {
-    messages <- Message{msgType:MESSAGE_TYPE_END}
     return
   }
 
@@ -48,9 +52,6 @@ func getUrlAsString(url string, depth int, maxDepth int, messages chan<- Message
   if (depth < maxDepth) {
     followLinks(bodyStr, depth+1, maxDepth, messages)
   }
-  messages <- Message{msgType:MESSAGE_TYPE_END}
-  return
-
 }
 
 func findPayload(input string, baseUrl string, messages chan<- Message) {
