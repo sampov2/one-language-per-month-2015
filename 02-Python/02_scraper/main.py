@@ -3,6 +3,7 @@
 
 import urllib3
 from bs4 import BeautifulSoup
+from urlparse import urljoin
 
 http = urllib3.PoolManager()
 
@@ -30,21 +31,36 @@ def getUrlGeneratorStyle(url, maxDepth, http):
 
     while len(queue) > 0:
         task = queue.pop(0)
+        print task.url
         response = http.request("GET", task.url)
 
         if response.status == response.status:
             yield GetUrlResponse(task, response.data);
             if task.depth < maxDepth:
-                queue.extend(findLinks(response.data, task.url))
+                queue.extend(findLinks(response.data, task.url, task.depth+1))
 
-def findLinks(str, url):
-    ## TODO
-    return []
+def findLinks(html, baseUrl, depth):
+    ret = []
+    soup = BeautifulSoup(html)
+    for a in soup.find_all('a'):
+        href = a.get('href')
+        if href != None:
+            link = urljoin(baseUrl, href)
+            ret.append(GetUrlTask(link, depth))
 
-def findImages(str, url):
-    ## TODO
-    return []
+    return ret
 
-for response in getUrlGeneratorStyle("http://spatineo.com", 1, http):
+def findImages(html, baseUrl):
+    ret = []
+    soup = BeautifulSoup(html)
+    for img in soup.find_all('img'):
+        src = img.get('src')
+        if src != None:
+            link = urljoin(baseUrl, src)
+            ret.append(link)
+
+    return ret
+
+for response in getUrlGeneratorStyle("http://m.yle.fi", 1, http):
     images = findImages(response.data, response.task.url)
     print images
