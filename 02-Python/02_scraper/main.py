@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import urllib3
+from bs4 import BeautifulSoup
 
 http = urllib3.PoolManager()
 
@@ -19,7 +20,9 @@ class GetUrlResponse:
         self.data = data
 
 ## Recursive scraping using the generator pattern
-def getUrl(url, maxDepth, http):
+## Good: nice example of the generator pattern
+## Bad: HTTP requests are done in series
+def getUrlGeneratorStyle(url, maxDepth, http):
     "retrieves an url"
     # A list of tasks
 
@@ -32,12 +35,16 @@ def getUrl(url, maxDepth, http):
         if response.status == response.status:
             yield GetUrlResponse(task, response.data);
             if task.depth < maxDepth:
-                queue.extend(findLinks(response.data, task.url, task.depth+1))
+                queue.extend(findLinks(response.data, task.url))
 
-def findLinks(str, url, depth):
-    ## TODO: implement
+def findLinks(str, url):
+    ## TODO
     return []
 
-for response in getUrl("http://spatineo.com", 1, http):
-    ## TODO: scrape for payload
-    print response.data;
+def findImages(str, url):
+    ## TODO
+    return []
+
+for response in getUrlGeneratorStyle("http://spatineo.com", 1, http):
+    images = findImages(response.data, response.task.url)
+    print images
