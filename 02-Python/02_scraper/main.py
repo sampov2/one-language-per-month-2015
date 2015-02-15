@@ -31,13 +31,16 @@ def getUrlGeneratorStyle(url, maxDepth, http):
 
     while len(queue) > 0:
         task = queue.pop(0)
-        print task.url
-        response = http.request("GET", task.url)
+        try:
+            response = http.request("GET", task.url)
+            if response.status == response.status:
+                yield GetUrlResponse(task, response.data);
+                if task.depth < maxDepth:
+                    queue.extend(findLinks(response.data, task.url, task.depth+1))
+        except urllib3.exceptions.RequestError:
+            print "ERROR retrieving url "+task.url
+            continue
 
-        if response.status == response.status:
-            yield GetUrlResponse(task, response.data);
-            if task.depth < maxDepth:
-                queue.extend(findLinks(response.data, task.url, task.depth+1))
 
 def findLinks(html, baseUrl, depth):
     ret = []
@@ -61,6 +64,6 @@ def findImages(html, baseUrl):
 
     return ret
 
-for response in getUrlGeneratorStyle("http://m.yle.fi", 1, http):
-    images = findImages(response.data, response.task.url)
-    print images
+for response in getUrlGeneratorStyle("http://m.yle.fi", 2, http):
+    for image in findImages(response.data, response.task.url):
+        print image
